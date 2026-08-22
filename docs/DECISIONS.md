@@ -26,9 +26,9 @@ Consequences: maintain upstream health, extranonce/job state and telemetry even 
 
 ## ADR-004 — Jobs are immutable routing records
 
-Decision: bind each issued `job_id` to backend, template generation and difficulty/version state until its acceptance window expires.
+Decision: bind each issued `job_id` to backend, template generation and difficulty/version/extranonce state until its acceptance window expires.
 
-Reason: switching must not misroute late shares or classify them against the new chain.
+Reason: switching or extranonce rotation must not misroute late shares or classify them against new work.
 
 Consequences: a bounded job registry and explicit stale/grace semantics are required.
 
@@ -47,3 +47,19 @@ Decision: consensus/protocol code is gated by upstream-source research and deter
 Reason: AuxPoW, DigiByte MultiShield and Stratum extension errors can silently waste paid hashrate or create invalid blocks.
 
 Consequences: unresolved protocol facts are explicit blockers, not TODO guesses in production code.
+
+## ADR-007 — MultiShield predictor has a deterministic Core-equivalent kernel
+
+Decision: implement DigiByte V4 next-target reproduction as a deterministic integer-only kernel that is tested independently from the stochastic forward simulator.
+
+Reason: profitability forecasting may be probabilistic, but the difficulty rule itself is consensus behavior and must reproduce DigiByte Core exactly.
+
+Consequences: historical vectors must match compact `nBits` byte-for-byte before predictor forecasts can influence routing.
+
+## ADR-008 — AuxPoW slot/serialization rules belong to each child adapter
+
+Decision: `AuxChain` owns its expected merkle slot function, commitment encoding, endianness constraints and proof serializer. `AuxPoWCoordinator` composes only compatible adapters.
+
+Reason: current ESF uses `slot = merkle_nonce % merkle_size`, which differs from common Namecoin/Dogecoin chain-id/LCG slot selection.
+
+Consequences: adding a child chain requires protocol extraction and compatibility tests; configuration with colliding/incompatible children is rejected before jobs are emitted.

@@ -4,34 +4,89 @@
 
 - Mainnet AuxPoW activation height: `31733`.
 - Mainnet AuxPoW chain ID: `1175`.
+- AuxPoW version flag: bit 8 (`1 << 8`).
+- Child chain id occupies version bits `[31:16]`.
 - ESF uses `getauxblock` for work and `submitauxblock` for submission.
-- Child block version includes the AuxPoW flag and chain ID before the child hash is computed.
-- Pending AuxPoW templates are keyed by child hash inside ESF; the coordinator must submit the exact child hash returned for that template.
+- Child block version and merkle root are finalized before the child hash returned to the miner is computed.
+- AuxPoW proof is limited to 4096 serialized bytes; each merkle branch is limited to depth 30.
 
-## Generic Namecoin/Dogecoin-style merged-mining model
+## Exact ESF `CAuxPow` serialization order
 
-For N compatible children, build an auxiliary merkle tree of child block hashes. The parent coinbase commits to the auxiliary merkle root and tree metadata. Each child proof contains:
-- parent coinbase transaction;
-- branch proving coinbase inclusion in the parent merkle root;
-- parent block header;
-- branch proving child hash inclusion in the auxiliary merkle root;
-- child merkle index/tree metadata required by that chain's consensus serializer.
+Current ESF source serializes:
 
-A single parent header can satisfy zero, one or many child targets independently of whether it satisfies the parent target.
+```text
+1. coinbaseTx            CMutableTransaction
+2. hashBlock             uint256 parent block hash
+3. vMerkleBranch         vector<uint256>
+4. nIndex                int32-style Core serialization
+5. vChainMerkleBranch    vector<uint256>
+6. nChainIndex           int32-style Core serialization
+7. parentBlock           pure 80-byte parent header
+```
 
-## ESF items still requiring source-level extraction before implementation
+The parent header embedded in the proof is deliberately a pure 80-byte header and cannot recursively carry AuxPoW.
 
-**BLOCKING for Phase 4:**
-- exact `CAuxPow` serialization field order used by ESF v29;
-- exact merged-mining commitment magic/placement and byte order;
-- child-hash byte order inside aux merkle computation;
-- expected chain-index function and nonce/tree-size encoding;
-- coinbase branch serialization/index conventions;
-- strict parent chain-ID checks;
-- deterministic vector from ESF functional/unit tests.
+## Exact ESF merged-mining commitment
 
-These will be copied as testable protocol facts from `src/primitives/block.*`, `src/pow.cpp` and `test/functional/feature_1175_auxpow.py`; do not implement from memory or a different child chain.
+ESF searches the parent coinbase `scriptSig` for exactly one magic prefix:
 
-## Coordinator abstraction
+```text
+fa be 6d 6d
+```
 
-`AuxPoWCoordinator` accepts `Vec<AuxCandidate>` and produces a parent coinbase commitment plus per-child proof context. Chain-specific adapters may override commitment/proof serialization when a child is not compatible with the common Namecoin-style format.
+It must be followed by:
+
+```text
+32 bytes  auxiliary merkle root
+4 bytes   merkle tree size, little-endian uint32
+4 bytes   merkle nonce, little-endian uint32
+```
+
+Validation then requires:
+- the parent `hashBlock` matches the supplied parent header hash;
+- parent-chain version high 16 bits are not equal to child chain id `1175`;
+- parent coinbase is transaction index 0 and its merkle branch reaches the parent header merkle root;
+- `merkle_size` is a power of two in `1..2^30`;
+- auxiliary branch length is exactly `log2(merkle_size)`;
+- `nChainIndex < merkle_size`;
+- `nChainIndex == merkle_nonce % merkle_size`;
+- the computed auxiliary merkle root equals the 32-byte root committed in the coinbase.
+
+For an AuxPoW ESF block, ESF tests the **parent header hash against the ESF child target** (`block.nBits`) and then validates the commitment. The parent header does not need to satisfy the DGB parent target for an ESF-only solve.
+
+## Critical compatibility finding
+
+ESF does **not** use the common Namecoin/Dogecoin LCG expected-index function keyed by chain id. Its slot function is simply:
+
+```text
+slot = merkle_nonce % merkle_size
+```
+
+Therefore merged mining must not have one hard-coded "standard AuxPoW" slot algorithm. Each `AuxChain` adapter owns:
+- expected slot/index function;
+- commitment/root byte-order rules;
+- strict parent/child chain-id constraints;
+- proof serialization;
+- RPC submission format.
+
+For multiple simultaneous children, the coordinator must search tree size/nonce for collision-free slots across the adapters and may combine only children whose commitment-root format is mutually compatible. Incompatible variants must be rejected as an invalid route configuration rather than silently producing bad proofs.
+
+## Coordinator model
+
+```text
+AuxPoWCoordinator
+  -> gather child candidates
+  -> group by compatible commitment format
+  -> choose tree size + nonce
+  -> ask each adapter for expected slot
+  -> reject collisions / enlarge tree / retry nonce
+  -> build one auxiliary merkle root for compatible children
+  -> return parent coinbase commitment + per-child proof context
+```
+
+## Remaining Phase 0 / Phase 4 blockers
+
+- Port deterministic valid/invalid vectors from ESF unit/functional tests.
+- Verify exact transaction witness serialization policy used by `submitauxblock` RPC hex.
+- Build a regtest round-trip: `getauxblock -> construct parent coinbase/header -> serialize CAuxPow -> submitauxblock`.
+- Before enabling additional child chains, extract their own slot, endian, commitment and serializer rules independently.
