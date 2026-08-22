@@ -1,0 +1,38 @@
+nicehash:
+  listen: "0.0.0.0:3333"
+  expected_hashrate_ph: 10.0
+
+btc:
+  primary:
+    type: "headframe"
+    host: "replace-me"
+    user: "replace-me"
+  backup:
+    type: "braiins"
+    host: "replace-me"
+    user: "replace-me"
+
+dgb:
+  rpc_url: "http://dgb:14022"
+  rpc_user_env: "DGB_RPC_USER"
+  rpc_password_env: "DGB_RPC_PASSWORD"
+
+aux:
+  - name: "esf"
+    enabled: true
+    rpc_url: "http://esf:replace-me"
+    rpc_user_env: "ESF_RPC_USER"
+    rpc_password_env: "ESF_RPC_PASSWORD"
+
+routing:
+  mode: "auto"
+  enter_dgb_edge: 0.08
+  exit_dgb_edge: 0.03
+  minimum_window_seconds: 60
+  cooldown_seconds: 30
+  max_dgb_network_share: 0.20
+
+risk:
+  max_slippage: 0.03
+  min_market_depth_usd: 100.0
+  max_market_age_seconds: 10
