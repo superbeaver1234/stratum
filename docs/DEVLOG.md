@@ -122,3 +122,32 @@
 - add GitHub Actions for fmt/clippy/tests;
 - resolve any compiler or vector failures before marking the primitives gate complete;
 - implement the Core-equivalent MultiShield V4 kernel on top of these exact integer primitives.
+
+## 2026-08-23 — Implement Core-equivalent MultiShield V4 kernel
+
+### Added
+- `stratum-dgb` crate with `DgbMultiShieldV4` pinned to DigiByte Core v9.26.5;
+- exact mainnet V4 constants, powLimit, per-algo adjustment order and compact-target output;
+- immutable raw header metadata model with explicit DigiByte algorithm identifiers;
+- internal 11-block median-time-past derivation and contiguous-history validation;
+- deterministic synthetic vectors for equilibrium, fast/slow clamps, hardening and easing steps.
+
+### Changed
+- deterministic V4 input now uses raw timestamps instead of trusting RPC-provided MTP; ADR-010 records the 61-block minimum history contract.
+
+### Problems
+- the required >=100 real historical DGB next-`nBits` vectors have not yet been captured; therefore the consensus gate remains open.
+- Rust CI result is still required before compiler-level correctness is claimed.
+
+### Decisions
+- no stochastic predictor work is introduced;
+- the kernel contains no RPC/database/network access and no floating-point consensus arithmetic.
+
+### Tests
+- synthetic expected `nBits` vectors are included but not reported as passing until CI runs;
+- source operation order matches pinned `GetNextWorkRequiredV4`: MTP delta, `/4` damping, `690..870` clamp, target multiply/divide, iterative local 4% steps, powLimit clamp, compact encoding.
+
+### Next
+- obtain real historical mainnet vectors and require byte-for-byte matches;
+- fix any CI failures before marking MultiShield implementation complete;
+- then proceed to ESF deterministic proof implementation and Phase 1 RPC/data-plane work.

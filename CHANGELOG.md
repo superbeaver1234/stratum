@@ -11,6 +11,7 @@ All notable user-visible changes will be documented here.
 - Explicit research gates for live NiceHash compatibility, DGB native mining and ESF deterministic vectors.
 - Exact production daemon compatibility pins for DigiByte Core v9.26.5 and ElevenSeventyFive Core v29.1.0.
 - Canonical Rust mining primitives for hashes, targets, compact bits, SHA256d, merkle roots, block-header serialization and mining/accounting units.
+- Core-equivalent DigiByte MultiShield V4 integer kernel with internally derived median-time-past and deterministic synthetic vectors.
 
 ### Changed
 - AuxPoW architecture now treats chain slot/index/serialization behavior as child-adapter consensus logic rather than assuming one universal AuxPoW variant.

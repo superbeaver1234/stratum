@@ -70,7 +70,7 @@ Backlog order follows correctness and safety dependencies rather than feature vi
 
 ## Phase 7 — Predictor / backtesting
 
-- [ ] exact MultiShield kernel vectors.
+- [ ] exact MultiShield kernel vectors — integer kernel implementation committed; >=100 real historical vectors still required.
 - [ ] stochastic 1/2/3/5 block simulation including self-impact.
 - [ ] historical replay engine and threshold grid search.
 

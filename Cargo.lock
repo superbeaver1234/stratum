@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
+name = "stratum-dgb"
+version = "0.1.0"
+dependencies = [
+ "stratum-primitives",
+]
+
+[[package]]
 name = "stratum-primitives"
 version = "0.1.0"

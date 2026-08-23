@@ -81,3 +81,22 @@ Consequences:
 - upgrades require source diff review and compatibility tests before changing the pin;
 - DigiByte GBT clients pass `sha256d` explicitly and never rely on a global daemon default;
 - deployment tooling must expose the connected daemon version in health/status data.
+
+## ADR-010 — MultiShield kernel derives MTP from raw contiguous history
+
+Decision: `DgbMultiShieldV4` accepts raw block timestamp/bits/algo metadata and
+derives median-time-past internally instead of accepting caller-provided MTP.
+The minimum normal history is 61 contiguous blocks: the tip, the block 50
+ancestors behind it, and ten additional ancestors needed to reproduce the older
+11-block MTP window. Callers may provide more history so the previous requested
+algorithm block can be found after an unusually long gap.
+
+Reason: MTP is consensus-derived data. Recomputing it inside the pure kernel
+removes an RPC/adapter-derived value from the trusted mathematical input and
+makes historical vectors more self-contained and reproducible.
+
+Consequences:
+- RPC adapters must provide a contiguous header suffix with raw timestamps;
+- the kernel validates height continuity and refuses incomplete history;
+- no RPC, wall clock, database or floating-point values enter the deterministic
+  V4 calculation.
