@@ -1,6 +1,9 @@
 # AuxPoW Research
 
-## ESF facts confirmed from current source
+Production authority: ElevenSeventyFive Core `v29.1.0`, commit
+`3a59832c3c105e65339252b5efe1b6a796f94641`.
+
+## ESF facts confirmed from pinned source
 
 - Mainnet AuxPoW activation height: `31733`.
 - Mainnet AuxPoW chain ID: `1175`.
@@ -9,20 +12,25 @@
 - ESF uses `getauxblock` for work and `submitauxblock` for submission.
 - Child block version and merkle root are finalized before the child hash returned to the miner is computed.
 - AuxPoW proof is limited to 4096 serialized bytes; each merkle branch is limited to depth 30.
+- The `getauxblock` submission path decodes `CAuxPow` using `TX_WITH_WITNESS` and rejects trailing bytes.
 
 ## Exact ESF `CAuxPow` serialization order
 
-Current ESF source serializes:
+Pinned ESF source serializes:
 
 ```text
-1. coinbaseTx            CMutableTransaction
+1. coinbaseTx            CMutableTransaction, TX_WITH_WITNESS stream
 2. hashBlock             uint256 parent block hash
 3. vMerkleBranch         vector<uint256>
-4. nIndex                int32-style Core serialization
+4. nIndex                int32 Core serialization
 5. vChainMerkleBranch    vector<uint256>
-6. nChainIndex           int32-style Core serialization
+6. nChainIndex           int32 Core serialization
 7. parentBlock           pure 80-byte parent header
 ```
+
+`stratum-auxpow::EsfAuxPowProof::serialize` mirrors this field order. The
+serialized parent coinbase transaction is represented by the semantic
+`SerializedParentCoinbaseTx` type rather than an unlabelled byte vector.
 
 The parent header embedded in the proof is deliberately a pure 80-byte header and cannot recursively carry AuxPoW.
 
@@ -37,7 +45,7 @@ fa be 6d 6d
 It must be followed by:
 
 ```text
-32 bytes  auxiliary merkle root
+32 bytes  auxiliary merkle root in uint256/internal wire byte order
 4 bytes   merkle tree size, little-endian uint32
 4 bytes   merkle nonce, little-endian uint32
 ```
@@ -69,7 +77,29 @@ Therefore merged mining must not have one hard-coded "standard AuxPoW" slot algo
 - proof serialization;
 - RPC submission format.
 
-For multiple simultaneous children, the coordinator must search tree size/nonce for collision-free slots across the adapters and may combine only children whose commitment-root format is mutually compatible. Incompatible variants must be rejected as an invalid route configuration rather than silently producing bad proofs.
+`stratum-auxpow::AuxChain` encodes this boundary; `EsfAuxChain` implements the
+ESF modulo slot rule and commitment format.
+
+For multiple simultaneous children, the coordinator must search tree size/nonce for collision-free slots across adapters and may combine only children whose commitment-root format is mutually compatible. Incompatible variants must be rejected as an invalid route configuration rather than silently producing bad proofs.
+
+## Upstream deterministic reference
+
+Pinned ESF ships `test/functional/feature_1175_auxpow.py`. Its valid single-chain
+reference constructs:
+- a parent coinbase whose scriptSig is exactly magic + child-hash LE + `size=1` LE + `nonce=0` LE;
+- empty parent and chain branches;
+- parent transaction index `0` and chain index `0`;
+- a pure parent header solved against the child `nBits` target;
+- `hashBlock == parentBlock.GetHash()`.
+
+The functional suite then submits the serialized proof through both
+`getauxblock(hash, auxpow)` and `submitauxblock(hash, auxpow)` and checks daemon
+acceptance. It also exercises wrong child commitment, same parent/child chain id,
+underworked parent PoW and malformed/oversized proofs.
+
+Our Rust serializer/layout tests are source-equivalent to that format, but **this
+repository does not claim the daemon round-trip is proven until the Rust-built
+proof itself is accepted by a pinned v29.1.0 regtest daemon**.
 
 ## Coordinator model
 
@@ -84,9 +114,17 @@ AuxPoWCoordinator
   -> return parent coinbase commitment + per-child proof context
 ```
 
-## Remaining Phase 0 / Phase 4 blockers
+## Remaining blocker: our serializer against daemon
 
-- Port deterministic valid/invalid vectors from ESF unit/functional tests.
-- Verify exact transaction witness serialization policy used by `submitauxblock` RPC hex.
-- Build a regtest round-trip: `getauxblock -> construct parent coinbase/header -> serialize CAuxPow -> submitauxblock`.
-- Before enabling additional child chains, extract their own slot, endian, commitment and serializer rules independently.
+Execution requirements to close the gate externally:
+
+1. Build ESF Core `v29.1.0` at commit `3a59832c3c105e65339252b5efe1b6a796f94641` with functional/regtest support.
+2. Start a clean regtest daemon; AuxPoW activates at regtest height `200`.
+3. Mine to height `199`.
+4. Call `getauxblock` with a valid `resf` payout address.
+5. Feed returned child hash/bits into the Rust ESF proof builder/serializer.
+6. Submit its exact hex with `submitauxblock` and require `true` plus block-height increment.
+7. Repeat with mutations for wrong root, nonce, size, slot, parent branch/header, child hash, truncation and byte order; require daemon rejection.
+8. Store sanitized request/result fixtures under `tests/fixtures/esf/`.
+
+Until steps 1–8 use **our Rust-produced bytes**, the M0.5 AuxPoW round-trip item remains open.
