@@ -151,3 +151,51 @@
 - obtain real historical mainnet vectors and require byte-for-byte matches;
 - fix any CI failures before marking MultiShield implementation complete;
 - then proceed to ESF deterministic proof implementation and Phase 1 RPC/data-plane work.
+
+## 2026-08-23 — Pin DGB SHA256 GBT/header semantics and capture workflow
+
+### Added
+- stable v9.26.5 SHA256d header/version and GBT semantics in `docs/PROTOCOL.md` and `docs/RPC.md`;
+- reproducible `tools/capture_dgb_consensus.py` fixture collector for real mainnet headers, SHA256d GBT, and >=100 actual SHA256d next-`nBits` vectors.
+
+### Changed
+- the former broad DGB GBT research item is now source-proven; a narrower integration gate remains for a real pinned-daemon GBT fixture and solved `submitblock` round-trip.
+
+### Problems
+- this execution environment cannot connect a local pinned `digibyted` nor issue arbitrary authenticated external RPC, so real historical vectors cannot be generated here.
+
+### Decisions
+- explorer difficulty numbers are not acceptable substitutes for raw `version`/`bits`/timestamp headers;
+- the capture utility fails closed on wrong Core version, wrong network, IBD, or non-SHA256d template identity.
+
+### Tests
+- pinned source confirms `ALGO_SHA256D=0`, version bits `0x0200`, explicit GBT algorithm parameter, mandatory `segwit` rule, mutable set, target/bits fields, and BIP22-style `submitblock` behavior.
+
+### Next
+- run the capture utility against DigiByte Core v9.26.5 mainnet and commit sanitized fixtures;
+- replay >=100 vectors byte-for-byte with `DgbMultiShieldV4`.
+
+## 2026-08-23 — Add ESF AuxPoW primitives
+
+### Added
+- `stratum-auxpow` crate with an `AuxChain` consensus-variant boundary;
+- ESF modulo slot rule, commitment encoder, merkle branch application, semantic serialized-parent-coinbase type, and exact `CAuxPow` field serializer;
+- unit vectors mirroring the pinned ESF functional-test single-chain layout.
+
+### Changed
+- `docs/AUXPOW.md` now distinguishes source-equivalent serializer tests from daemon-proven acceptance and documents the exact external regtest procedure.
+
+### Problems
+- no ESF v29.1.0 regtest daemon is available in this execution environment;
+- Rust compiler/CI results are still required before the crate itself is considered test-proven.
+
+### Decisions
+- no claim of ESF round-trip completion is made until bytes produced by our Rust serializer are accepted by pinned v29.1.0 `submitauxblock` and mutated proofs are rejected.
+
+### Tests
+- committed vectors cover commitment byte order, modulo slot behavior, serializer field order, hashBlock derivation, merkle branch direction, branch shape, and parent coinbase index zero;
+- upstream `feature_1175_auxpow.py` independently proves the same protocol family against the daemon, but that does not substitute for testing our bytes.
+
+### Next
+- run our Rust-built proof through v29.1.0 regtest at activation height 200;
+- persist valid/invalid sanitized fixtures under `tests/fixtures/esf/`.

@@ -11,9 +11,10 @@ Backlog order follows correctness and safety dependencies rather than feature vi
 - [x] ESF AuxPoW activation, chain id, RPC, serializer and commitment validation extraction.
 - [ ] Current NiceHash SHA256 verifier/live-session transcript and compatibility matrix.
 - [x] DGB SHA256 algorithm id/header version encoding extraction.
-- [ ] DGB current `getblocktemplate`/coinbase/submission semantics.
-- [ ] Historical DGB V4 `nBits` deterministic vectors.
-- [ ] ESF valid/invalid AuxPoW deterministic vectors and regtest round-trip.
+- [x] DGB v9.26.5 `getblocktemplate`/coinbase/submission semantics from pinned source.
+- [ ] Real pinned-daemon DGB SHA256d GBT fixture and solved `submitblock` integration proof.
+- [ ] Historical DGB V4 `nBits` deterministic vectors (>=100 actual SHA256d blocks).
+- [ ] ESF valid/invalid AuxPoW deterministic vectors and regtest round-trip using our Rust-produced bytes.
 - [ ] Headframe/Braiins/ViaBTC payout + Stratum telemetry matrix.
 - [x] Pin exact DGB and ESF production release/tag/commit.
 - [ ] DGB and ESF runtime daemon version/network startup validation contract.
@@ -52,9 +53,9 @@ Backlog order follows correctness and safety dependencies rather than feature vi
 ## Phase 4 — DGB + ESF AuxPoW
 
 - [ ] generic compatible-tree coordinator.
-- [ ] ESF slot/commitment/proof adapter.
+- [ ] ESF slot/commitment/proof adapter — implementation committed; Rust CI and daemon proof still required.
 - [ ] parent-only, aux-only and simultaneous solve tests.
-- [ ] deterministic `submitauxblock` regtest proof.
+- [ ] deterministic `submitauxblock` regtest proof using our serializer.
 
 ## Phase 5 — Auto switching
 

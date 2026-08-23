@@ -12,12 +12,16 @@ All notable user-visible changes will be documented here.
 - Exact production daemon compatibility pins for DigiByte Core v9.26.5 and ElevenSeventyFive Core v29.1.0.
 - Canonical Rust mining primitives for hashes, targets, compact bits, SHA256d, merkle roots, block-header serialization and mining/accounting units.
 - Core-equivalent DigiByte MultiShield V4 integer kernel with internally derived median-time-past and deterministic synthetic vectors.
+- Source-pinned DigiByte v9.26.5 SHA256d GBT/header semantics plus a fail-closed real-consensus fixture capture utility.
+- ESF AuxPoW Rust primitives for the modulo slot rule, commitment format, merkle branches and exact proof field serialization.
 
 ### Changed
 - AuxPoW architecture now treats chain slot/index/serialization behavior as child-adapter consensus logic rather than assuming one universal AuxPoW variant.
 - MultiShield prediction is split into an exact Core-equivalent target kernel and a probabilistic forward simulator.
 - Production daemon upgrades are fail-closed until their consensus/RPC compatibility has been tested against the pinned versions.
+- DGB GBT source semantics are considered researched, while real daemon GBT/`submitblock` evidence remains an explicit integration gate.
 
 ### Security
 - Secret-bearing files and common key formats are excluded by `.gitignore`; configuration examples contain placeholders only.
 - Consensus primitives initially avoid third-party dependencies and floating-point target arithmetic.
+- Fixture capture refuses wrong daemon versions, wrong networks and IBD rather than silently recording incompatible data.
