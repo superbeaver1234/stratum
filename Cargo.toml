@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
-members = []
+members = [
+    "crates/primitives",
+]
 
 [workspace.package]
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
-
-# Production crates are added only after Phase 0 protocol boundaries are verified.

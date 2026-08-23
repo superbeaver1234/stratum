@@ -25,7 +25,7 @@ Backlog order follows correctness and safety dependencies rather than feature vi
 - [ ] `AuxChain` RPC abstraction + ESF read adapter.
 - [ ] BTC baseline adapter and manual fallback baseline input.
 - [ ] exchange adapter abstraction and executable bid VWAP.
-- [ ] canonical sat/PH/day money/hashrate unit types.
+- [ ] canonical sat/PH/day money/hashrate unit types — implementation committed; mark complete after Rust CI is green.
 - [ ] profitability calculation and input snapshot persistence.
 - [ ] paper decision engine with hysteresis/risk gates.
 - [ ] PostgreSQL schema/migrations for Phase 1 inputs/outputs.
@@ -43,7 +43,7 @@ Backlog order follows correctness and safety dependencies rather than feature vi
 
 ## Phase 3 — Native DGB SHA256
 
-- [ ] exact block/target/compact/merkle primitives with vectors.
+- [ ] exact block/target/compact/merkle primitives with vectors — implementation committed; mark complete after Rust CI is green.
 - [ ] DGB GBT parser and coinbase builder.
 - [ ] SHA256 job builder and local share validation.
 - [ ] network-solution reconstruction and `submitblock`.

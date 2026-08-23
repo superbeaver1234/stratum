@@ -92,3 +92,33 @@
 - implement Core-equivalent MultiShield V4 kernel;
 - capture historical DGB vectors;
 - prove ESF AuxPoW round-trip against the pinned daemon.
+
+## 2026-08-23 — Add canonical mining primitives
+
+### Added
+- dependency-free `stratum-primitives` Rust crate;
+- explicit display-hex versus wire-little-endian `Hash256` APIs;
+- exact 256-bit target representation and Bitcoin Core compatible compact-target conversions;
+- integer target multiply/divide helpers for consensus kernels;
+- SHA-256, SHA256d, 80-byte Bitcoin-family header serialization and Bitcoin merkle root;
+- strongly typed money/hashrate/profitability units;
+- deterministic vectors including Bitcoin genesis header and compact target examples.
+
+### Changed
+- root workspace now contains the first production crate.
+
+### Problems
+- the current execution container does not have `rustc` or `cargo`; local `cargo fmt`, `cargo clippy`, and `cargo test` cannot be executed here.
+- correctness validation therefore moves to repository CI; no local pass is claimed.
+
+### Decisions
+- consensus primitives avoid IEEE floating point;
+- the initial target/hash/crypto layer has no third-party dependencies, reducing supply-chain and offline-build surface for consensus-critical code.
+
+### Tests
+- test vectors are committed with the crate, but remain unverified until Rust CI executes them.
+
+### Next
+- add GitHub Actions for fmt/clippy/tests;
+- resolve any compiler or vector failures before marking the primitives gate complete;
+- implement the Core-equivalent MultiShield V4 kernel on top of these exact integer primitives.
