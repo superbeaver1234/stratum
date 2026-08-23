@@ -63,3 +63,21 @@ Decision: `AuxChain` owns its expected merkle slot function, commitment encoding
 Reason: current ESF uses `slot = merkle_nonce % merkle_size`, which differs from common Namecoin/Dogecoin chain-id/LCG slot selection.
 
 Consequences: adding a child chain requires protocol extraction and compatibility tests; configuration with colliding/incompatible children is rejected before jobs are emitted.
+
+## ADR-009 — Production daemon behavior is pinned to exact release commits
+
+Decision: target DigiByte Core `v9.26.5` at
+`05b50e229db5a3d1fb316c77f3f6c62efa879b96` and ElevenSeventyFive Core
+`v29.1.0` at `3a59832c3c105e65339252b5efe1b6a796f94641`. Daemon adapters fail
+compatibility checks by default when connected to an unverified version.
+
+Reason: daemon RPC shape and consensus behavior are part of this system's
+correctness boundary. ESF demonstrates why a floating "latest" target is unsafe:
+v29.0.0 and v29.1.0 diverge at the AuxPoW/ASERT activation because v29.1.0
+corrected the ASERT anchor.
+
+Consequences:
+- deterministic vectors are generated against these exact refs;
+- upgrades require source diff review and compatibility tests before changing the pin;
+- DigiByte GBT clients pass `sha256d` explicitly and never rely on a global daemon default;
+- deployment tooling must expose the connected daemon version in health/status data.

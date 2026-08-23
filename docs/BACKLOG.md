@@ -10,12 +10,13 @@ Backlog order follows correctness and safety dependencies rather than feature vi
 - [x] DigiByte current V4 MultiShield formula/constants extraction.
 - [x] ESF AuxPoW activation, chain id, RPC, serializer and commitment validation extraction.
 - [ ] Current NiceHash SHA256 verifier/live-session transcript and compatibility matrix.
-- [ ] DGB SHA256 algorithm id/header version encoding extraction.
+- [x] DGB SHA256 algorithm id/header version encoding extraction.
 - [ ] DGB current `getblocktemplate`/coinbase/submission semantics.
 - [ ] Historical DGB V4 `nBits` deterministic vectors.
 - [ ] ESF valid/invalid AuxPoW deterministic vectors and regtest round-trip.
 - [ ] Headframe/Braiins/ViaBTC payout + Stratum telemetry matrix.
-- [ ] DGB and ESF daemon version/network startup validation contract.
+- [x] Pin exact DGB and ESF production release/tag/commit.
+- [ ] DGB and ESF runtime daemon version/network startup validation contract.
 
 ## Phase 1 — Profitability-only / paper data plane
 

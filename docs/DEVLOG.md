@@ -62,3 +62,33 @@
 - extract DGB SHA256 algorithm/version/GBT behavior and historical `nBits` vectors;
 - run current NiceHash verifier/live compatibility capture;
 - complete Headframe/Braiins/ViaBTC protocol matrix.
+
+## 2026-08-23 — Pin production DGB and ESF daemon versions
+
+### Added
+- `docs/DAEMON_COMPATIBILITY.md` with exact production tags, commits and source authorities;
+- DigiByte SHA256 algorithm id/version encoding evidence from the pinned release;
+- explicit GBT algorithm-selection contract for future DGB adapters.
+
+### Changed
+- DigiByte production target is `v9.26.5`, not the preliminary `v8.26.2` candidate.
+- ESF production target is `v29.1.0`, not `v29.0.0`.
+
+### Problems
+- ESF v29.0.0 and v29.1.0 are consensus-incompatible from AuxPoW/ASERT activation at height 31733 because v29.1.0 corrected the ASERT anchor. Supporting v29.0.0 would make deterministic AuxPoW/regtest evidence target the wrong chain.
+- A real pinned DigiByte daemon is still needed to capture a canonical SHA256d GBT fixture and a solved `submitblock` round-trip.
+
+### Decisions
+- production daemon compatibility is fail-closed by exact supported release/commit unless an explicitly tested override is configured;
+- future DGB GBT callers must pass `sha256d` explicitly rather than depend on the daemon-wide mining algorithm default.
+
+### Tests
+- GitHub ref comparison proved `DigiByte-Core/digibyte:v9.26.5` resolves to `05b50e229db5a3d1fb316c77f3f6c62efa879b96`;
+- the pinned v9.26.5 `src/pow.cpp` blob is identical to the previously researched `develop` blob;
+- GitHub ref comparison proved `1175Dev/1175:v29.1.0` resolves to `3a59832c3c105e65339252b5efe1b6a796f94641`.
+
+### Next
+- implement canonical integer/hash/target primitives;
+- implement Core-equivalent MultiShield V4 kernel;
+- capture historical DGB vectors;
+- prove ESF AuxPoW round-trip against the pinned daemon.
