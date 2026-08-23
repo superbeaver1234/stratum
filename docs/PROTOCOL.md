@@ -33,45 +33,92 @@ No production Stratum behavior may hard-code these unknowns before current verif
 
 ## DigiByte SHA256
 
-### Confirmed from current DigiByte Core `develop`
+### Pinned authority
 
-- **CONFIRMED:** DigiByte remains multi-algorithm; current-era blocks use `GetNextWorkRequiredV4` after height `1,430,000`.
-- **CONFIRMED:** Mainnet overall target spacing is 15 seconds, with five-algorithm V4 target spacing `15 * 5 = 75` seconds per algorithm.
-- **CONFIRMED:** V4 uses a 10-interval averaging target of `750` seconds and inspects `NUM_ALGOS * nAveragingInterval = 50` recent chain blocks.
-- **CONFIRMED:** V4 computes elapsed time from median-time-past, damps deviation by `/4`, then clamps the effective window to `690..870` seconds (`-8%/+16%`).
-- **CONFIRMED:** The starting target is the previous block of the requested algorithm. A local per-algorithm target adjustment of 4% is applied according to the distance between that block and the current tip.
-- **CONFIRMED:** Current native mining should use `getblocktemplate`/BIP22-style block construction and `submitblock`, not legacy `getwork`.
+Production mining semantics target DigiByte Core `v9.26.5`, commit
+`05b50e229db5a3d1fb316c77f3f6c62efa879b96`. `docs/DAEMON_COMPATIBILITY.md`
+is the compatibility authority. Earlier research against `develop` remains valid for
+`GetNextWorkRequiredV4` because the pinned tag contains the same `src/pow.cpp` blob.
 
-### V4 reproduction rule
+### Header and algorithm encoding
 
-For algorithm `algo` at tip `last`:
+From the pinned `src/primitives/block.h` / `block.cpp`:
 
 ```text
-first = last - 50 chain blocks
-prev_algo = last previous block using algo
-raw = MTP(last) - MTP(first)
-effective = 750 + (raw - 750) / 4
-effective = clamp(effective, 690, 870)
-new_target = target(prev_algo) * effective / 750
-adjustments = height(prev_algo) + 5 - 1 - height(last)
+ALGO_SHA256D          = 0
+BLOCK_VERSION_ALGO    = 0x0f00
+BLOCK_VERSION_SHA256D = 0x0200
 ```
 
-Then apply the exact iterative 4% integer target adjustments used by Core, followed by `powLimit` clamping and compact-target encoding. Integer operation order and truncation are consensus-relevant and must be reproduced exactly.
+`CBlockHeader::SetAlgo(ALGO_SHA256D)` ORs `0x0200` into the header version.
+`CBlockHeader::GetAlgo()` recovers SHA256d when `(version & 0x0f00) == 0x0200`.
+For SHA256d, `GetPoWAlgoHash()` is the ordinary Bitcoin-family double-SHA256 of
+the serialized 80-byte header.
 
-### Open DigiByte items
+Accepted algorithm names include `sha`, `sha256`, and `sha256d`; production code
+uses the canonical `sha256d` spelling.
 
-- **BLOCKING for native DGB mining:** pin the production daemon release/commit and extract the exact SHA256 algorithm id/version encoding used by current templates/headers.
-- **BLOCKING for native DGB mining:** verify current `getblocktemplate` fields, coinbase/version requirements and SHA256-specific template selection behavior.
-- **BLOCKING for predictor completion:** produce historical block vectors that reproduce next SHA256 `nBits` byte-for-byte.
+### MultiShield V4
+
+- **CONFIRMED:** V4 applies after height `1,430,000`.
+- **CONFIRMED:** overall target spacing is 15 seconds; five active algorithm slots imply a nominal 75-second per-algorithm cadence.
+- **CONFIRMED:** the global averaging interval examines 50 prior chain edges and targets `750` seconds.
+- **CONFIRMED:** elapsed time is `MTP(tip) - MTP(tip-50)`, damped as `750 + (raw-750)/4`, then clamped to `690..870` seconds.
+- **CONFIRMED:** the starting target is the most recent block of the requested algorithm.
+- **CONFIRMED:** local adjustment is iterative 4% target scaling based on `height(prev_algo) + 5 - 1 - height(tip)`.
+- **CONFIRMED:** integer operation order, powLimit clamp and compact encoding are consensus-relevant.
+
+`DgbMultiShieldV4` derives both MTP values from raw timestamps. A normal replay
+therefore needs at least 61 contiguous blocks; more history may be supplied to
+find a previous SHA block after an abnormal gap.
+
+### `getblocktemplate` SHA256d semantics on v9.26.5
+
+- **CONFIRMED:** the RPC accepts the mining algorithm as its second positional argument. Production callers MUST use:
+
+```text
+getblocktemplate({"rules":["segwit"]}, "sha256d")
+```
+
+rather than relying on the daemon-wide `miningAlgo` default.
+
+- **CONFIRMED:** omitting the `segwit` rule is rejected with `RPC_INVALID_PARAMETER`.
+- **CONFIRMED:** the returned template includes `pow_algo_id` and `pow_algo`; for SHA256d they must be `0` and `sha256d`.
+- **CONFIRMED:** the normal mutable set emitted by this source is `time`, `transactions`, `prevblock`.
+- **CONFIRMED:** `noncerange` is `00000000ffffffff`.
+- **CONFIRMED:** the response provides both compact `bits` and full numeric `target`; these must describe the same target.
+- **CONFIRMED:** `coinbaseaux` is emitted. In the pinned implementation the local `aux` object is initialized empty and no mandatory bytes are added to it on the ordinary path.
+- **CONFIRMED:** `coinbasevalue` is emitted; miners construct the coinbase unless a future/conditional template actually emits the documented optional `coinbasetxn`.
+- **CONFIRMED:** a default witness commitment is emitted when the block template requires one.
+- **CONFIRMED:** DigiDollar-aware miners may request the `digidollar-oracle` GBT rule. If the resulting coinbase has the oracle commitment, the response advertises `!digidollar-oracle` and returns `default_oracle_commitment`.
+- **CONFIRMED:** v9.26.5 buries already-active Taproot/DigiDollar/AlgoLock deployments, so their old version bits are not a stable source of `vbavailable` version-rolling space.
+
+### Block serialization and submission
+
+- Header serialization is the six Bitcoin-family fields: little-endian `nVersion`, internal/wire 32-byte previous hash, internal/wire merkle root, little-endian `nTime`, `nBits`, `nNonce`.
+- SHA256d PoW is over exactly that 80-byte header.
+- The full block uses normal Bitcoin-family transaction/block serialization as implemented by the pinned Core source.
+- `submitblock <hexdata> [dummy]` is the BIP22-style full-block submission path; the second compatibility argument is accepted and ignored.
+
+### Remaining DGB gates
+
+- **BLOCKING for historical proof:** capture at least 100 real SHA256d blocks and replay each block's `nBits` from its prior tip byte-for-byte.
+- **BLOCKING for native mining:** capture a real v9.26.5 SHA256d GBT fixture and prove a reconstructed solved block through a test-chain/regtest `submitblock` path.
+
+`tools/capture_dgb_consensus.py` is the reproducible external-environment capture utility. It refuses wrong daemon versions, non-mainnet or IBD state and records raw headers rather than explorer-derived difficulty floats.
 
 ## ESF / ElevenSeventyFive
 
-- **CONFIRMED:** Current ESF Core is SHA-256 and activates AuxPoW at mainnet height `31733`.
+Production AuxPoW semantics target ElevenSeventyFive Core `v29.1.0`, commit
+`3a59832c3c105e65339252b5efe1b6a796f94641`.
+
+- **CONFIRMED:** mainnet AuxPoW activation height is `31733`.
 - **CONFIRMED:** mainnet AuxPoW chain ID is `1175`.
 - **CONFIRMED:** `getauxblock <payout-address>` returns child hash, chain id, previous block, coinbase value, bits, height and target.
 - **CONFIRMED:** `submitauxblock <hash> <auxpow>` submits a serialized AuxPoW proof.
 - **CONFIRMED:** the child version is finalized with AuxPoW flag/chain-id bits before the child hash handed to the merged miner is computed.
 - **CONFIRMED:** ESF's current chain-slot rule is `nChainIndex == merkle_nonce % merkle_size`; this is not the common Namecoin/Dogecoin LCG chain-id indexing rule.
+- **CONFIRMED:** v29.1.0, not v29.0.0, is the supported production target because it corrects the ASERT activation anchor at height 31733.
 
 ## BTC upstream research
 
@@ -81,4 +128,4 @@ Then apply the exact iterative 4% integer target adjustments used by Core, follo
 
 ## Research gate
 
-Phase 1 may consume daemon/market/BTC baseline data while ingress-wire unknowns remain open. Phase 2 (real NiceHash proxy) is blocked on a current NiceHash verifier/live-session compatibility matrix. Phase 3 is blocked on DGB SHA256 header/template semantics. Phase 4 is blocked on deterministic ESF AuxPoW vectors.
+Phase 1 may consume daemon/market/BTC baseline data while ingress-wire unknowns remain open. Phase 2 (real NiceHash proxy) is blocked on a current NiceHash verifier/live-session compatibility matrix. Phase 3 remains blocked until the real GBT/submit proof is captured. Phase 4 remains blocked on deterministic ESF AuxPoW daemon acceptance/rejection evidence.
